@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fizik temelli 5 boyutlu kara delik (Tangherlini)</title>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;1,6..72,300;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+  :root { --ink:#e8e3f2; --dim:#9a93b0; --ion:#8db6ff; --ember:#f2b06a; --bruise:#a57cff; --glass:rgba(0,0,0,.55); --edge:rgba(190,170,240,.16); --serif:"Newsreader",Georgia,serif; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; background:#000; color:var(--ink); overflow:hidden; }
+  body { font-family:var(--serif); font-size:16px; line-height:1.45; -webkit-font-smoothing:antialiased; }
+  #c { position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none; cursor:grab; }
+  #c:active { cursor:grabbing; }
+
+  .glass { background:var(--glass); border:1px solid var(--edge); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); }
+
+  #left { position:fixed; left:max(16px,env(safe-area-inset-left)); top:max(16px,env(safe-area-inset-top)); width:min(340px,calc(100vw - 32px)); max-height:calc(100% - 150px); overflow:auto; padding:16px 18px; border-radius:16px; }
+  #left h1 { margin:0 0 4px; font-size:24px; font-weight:300; font-style:italic; line-height:1.1; }
+  #left p.sub { margin:0 0 14px; color:var(--dim); font-size:14px; }
+  .lbl { font-size:14px; color:var(--dim); margin:0 0 6px; }
+  #dbtns { display:flex; gap:8px; margin-bottom:14px; }
+  .dbtn { flex:1; font:inherit; font-size:17px; color:var(--ink); background:transparent; border:1px solid var(--edge); border-radius:10px; padding:7px 0; cursor:pointer; }
+  .dbtn:hover { border-color:rgba(190,170,240,.45); }
+  .dbtn[aria-pressed="true"] { background:rgba(242,176,106,.16); border-color:var(--ember); }
+  .dbtn:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible { outline:2px solid var(--ion); outline-offset:3px; }
+  #facts { margin:0 0 14px; padding:0; list-style:none; font-size:14.5px; }
+  #facts li { padding:4px 0; border-top:1px solid rgba(190,170,240,.10); }
+  #facts li:first-child { border-top:0; }
+  #facts b { font-weight:400; color:var(--ember); }
+  .row { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0 0 10px; font-size:15px; }
+  .row input[type=checkbox] { width:18px; height:18px; accent-color:var(--ember); }
+  .row input[type=range] { width:120px; accent-color:var(--ember); }
+  select { font:inherit; font-size:14px; color:var(--ink); background:#000; border:1px solid var(--edge); border-radius:8px; padding:4px 8px; max-width:170px; }
+  details { margin-top:12px; font-size:14px; color:var(--dim); }
+  summary { cursor:pointer; color:var(--ink); font-size:15px; }
+  details p { margin:8px 0 0; line-height:1.5; }
+
+  #dock { position:fixed; left:50%; transform:translateX(-50%); bottom:max(22px,env(safe-area-inset-bottom)); width:min(700px,calc(100vw - 32px)); padding:14px 24px 12px; border-radius:20px; }
+  #w0Head { display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-bottom:8px; }
+  #w0Title { font-size:19px; font-style:italic; }
+  #w0Val { color:var(--dim); font-size:14px; font-variant-numeric:tabular-nums; }
+  #w0Slider { -webkit-appearance:none; appearance:none; width:100%; height:28px; margin:0; background:transparent; cursor:pointer; }
+  #w0Slider::-webkit-slider-runnable-track { height:3px; border-radius:3px; background:linear-gradient(90deg,var(--ion),var(--ember) 60%,var(--bruise)); }
+  #w0Slider::-moz-range-track { height:3px; border-radius:3px; background:linear-gradient(90deg,var(--ion),var(--ember) 60%,var(--bruise)); }
+  #w0Slider::-webkit-slider-thumb { -webkit-appearance:none; width:22px; height:22px; margin-top:-9.5px; border-radius:50%; background:#000; border:2px solid #fff; box-shadow:0 0 0 4px rgba(255,200,140,.16),0 0 18px 3px rgba(255,190,120,.6); }
+  #w0Slider::-moz-range-thumb { width:18px; height:18px; border-radius:50%; background:#000; border:2px solid #fff; box-shadow:0 0 0 4px rgba(255,200,140,.16),0 0 18px 3px rgba(255,190,120,.6); }
+  #w0Slider:focus-visible { outline:2px solid var(--ion); outline-offset:6px; border-radius:8px; }
+  #w0Note { margin-top:6px; font-size:14px; color:var(--dim); }
+
+  .halfLabel { position:fixed; top:max(16px,env(safe-area-inset-top)); display:none; font-size:15px; font-style:italic; color:var(--ink); pointer-events:none; text-shadow:0 0 8px #000; }
+  #hud { position:fixed; right:max(16px,env(safe-area-inset-right)); top:max(16px,env(safe-area-inset-top)); color:var(--dim); font-size:13px; pointer-events:none; font-variant-numeric:tabular-nums; }
+  #loading { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; padding:0 28px; background:#000; font-style:italic; font-weight:300; font-size:22px; color:var(--dim); transition:opacity 1s ease; z-index:5; }
+  #loading.done { opacity:0; pointer-events:none; }
+  #fatal { position:fixed; inset:0; display:none; padding:32px; overflow:auto; white-space:pre-wrap; background:#000; color:var(--ink); font-size:14px; line-height:1.4; z-index:9; }
+  @media (max-width:720px) { #left { max-height:42%; } #hud { display:none; } }
+  @media (prefers-reduced-motion:reduce) { #loading { transition:none; } }
+</style>
+</head>
+<body>
+<canvas id="c" aria-label="Beş boyutlu kara delik görselleştirmesi"></canvas>
+
+<span class="halfLabel" id="lblL">D = 4 (Schwarzschild)</span>
+<span class="halfLabel" id="lblR">D = 5 (Tangherlini)</span>
+
+<div id="left" class="glass">
+  <h1>Beş boyutlu kara delik</h1>
+  <p class="sub">Dört uzamsal boyut ve zaman. Işık, Tangherlini metriğinde gerçek boş-geodezik olarak izleniyor.</p>
+
+  <div class="lbl">Uzay-zamanın toplam boyutu D</div>
+  <div id="dbtns">
+    <button class="dbtn" data-d="4" aria-pressed="false">4</button>
+    <button class="dbtn" data-d="5" aria-pressed="true">5</button>
+    <button class="dbtn" data-d="6" aria-pressed="false">6</button>
+    <button class="dbtn" data-d="7" aria-pressed="false">7</button>
+  </div>
+
+  <ul id="facts"></ul>
+
+  <label class="row"><span>D = 4 ile yan yana</span><input id="chkSplit" type="checkbox"></label>
+  <label class="row"><span>Madde modeli</span>
+    <select id="selMode">
+      <option value="0" selected>Küresel birikim</option>
+      <option value="1">İnce disk</option>
+    </select>
+  </label>
+  <label class="row"><span>Gökyüzü ızgarası</span><input id="chkGrid" type="checkbox"></label>
+  <label class="row"><span>Parlaklık</span><input id="rngExp" type="range" min="0.3" max="3" step="0.01" value="1"></label>
+  <label class="row"><span>Kalite</span>
+    <select id="selQ"><option value="auto" selected>Otomatik</option><option value="high">Yüksek</option><option value="medium">Orta</option><option value="low">Düşük</option></select>
+  </label>
+
+  <details>
+    <summary>Ne doğru, ne yaklaşık?</summary>
+    <p><b>Doğru:</b> Metrik f(r) = 1 − (r₀/r)<sup>D−3</sup>. Işınlar bu metrikte, 4 uzamsal boyutlu uzayda adım adım integre ediliyor. Foton küresi ve gölge yarıçapı bu integratörle analitik değerlerle karşılaştırıldı (D=4..7 için % 0,3 içinde).</p>
+    <p><b>Kararlı disk:</b> D = 4'te var (en içteki kararlı yörünge 3 r₀). D ≥ 5'te kararlı dairesel yörünge yok. Bu yüzden varsayılan model, kürenin her yönünden düşen ince plazma. İnce disk seçeneği D ≥ 5'te yalnızca görsel karşılaştırma içindir.</p>
+    <p><b>Yaklaşık:</b> Gözlemci durağan. Işıma için yalnızca kütleçekimsel ve Doppler kayması var. Dönme (Myers–Perry) yok. Işınlar dilimden çıkabilir, arka plan 3 boyuta izdüşürülüyor.</p>
+  </details>
+</div>
+
+<div id="dock" class="glass">
+  <div id="w0Head">
+    <span id="w0Title">Dördüncü uzamsal eksen (w)</span>
+    <span id="w0Val">w₀ = 0.00 r₀</span>
+  </div>
+  <input id="w0Slider" type="range" min="0" max="4" step="0.005" value="0" aria-label="Gözlemcinin dördüncü uzamsal eksendeki konumu">
+  <div id="w0Note"></div>
+  <label class="row" style="margin:8px 0 0"><span>w₀ kendiliğinden gezinsin</span><input id="chkAuto" type="checkbox" checked></label>
+</div>
+
+<div id="hud"></div>
+<div id="loading">Shader derleniyor…</div>
+<div id="fatal"></div>
+
+<script>
+(function () {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  function fail(msg) {
+    const el = $('fatal');
+    el.textContent = 'Bir hata oluştu. Bu metni geliştiriciye iletin:\n\n' + String(msg).slice(0, 4000);
+    el.style.display = 'block';
+    $('loading').style.display = 'none';
+  }
+  window.addEventListener('error', (e) => fail('JavaScript hatası: ' + e.message + ' (satır ' + e.lineno + ')'));
+
+  const canvas = $('c');
+  const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, depth: false, stencil: false, powerPreference: 'high-performance' });
+  if (!gl) { fail('Bu tarayıcı WebGL2 desteklemiyor. Güncel Chrome, Edge, Firefox ya da Safari 15+ kullanın.'); return; }
+
+  /* ════════════════════════════════════════════════════════════════════════
+   *  PHYSICS (units: horizon radius r0 = 1)
+   *
+   *  D-dimensional Schwarzschild-Tangherlini black hole:
+   *      ds² = -f dt² + dr²/f + r² dΩ²_{D-2},   f(r) = 1 - (r0/r)^(D-3)
+   *  D = 4 → Schwarzschild.  D = 5 → 4 spatial dimensions + time.
+   *
+   *  Null geodesics: spherical symmetry keeps every ray in a 2-plane through
+   *  the centre. The orbit equation, with u = 1/r, is
+   *      u'' + u = ((D-1)/2) r0^(D-3) u^(D-2)
+   *  which equals a Cartesian acceleration (unit-speed ray, h = |x ∧ v|):
+   *      a = -((D-1)/2) h² x / r^(D+1)        (D=4: the familiar 1.5 h² x / r⁵)
+   *  h² = |x|² - (x·v)² is computed in 4 spatial dimensions.
+   *
+   *  Photon sphere: r_ph = ((D-1)/2)^(1/(D-3)).  Shadow: b_c = r_ph / sqrt(f(r_ph)).
+   *  (D=4: 1.5 and 2.598;  D=5: √2 and 2.)
+   *
+   *  THE 5TH DIMENSION AS A SLICE: the screen shows a 3D slice of the 4D space.
+   *  The observer sits at (x,y,z) with an offset w0 along the 4th spatial axis.
+   *  Rays start inside the slice but the geodesics bend toward the centre in all
+   *  four directions, so they leave the slice when w0 ≠ 0. Since h ≥ |w0| for
+   *  every ray, the shadow shrinks and disappears once w0 exceeds b_c.
+   * ════════════════════════════════════════════════════════════════════════ */
+  function physics(D) {
+    const k = D - 3;
+    const f = (r) => 1 - Math.pow(r, -k);
+    const rph = Math.pow((D - 1) / 2, 1 / k);
+    return { f, rph, bc: rph / Math.sqrt(f(rph)) };
+  }
+
+  /* ─────────────────────────── shaders ─────────────────────────────── */
+  const VS = `#version 300 es
+in vec2 aPos;
+void main() { gl_Position = vec4(aPos, 0.0, 1.0); }
+`;
+
+  const FS = `#version 300 es
+precision highp float;
+precision highp int;
+out vec4 outColor;
+
+uniform vec2  uRes;
+uniform vec3  uCam;        // observer position inside the 3D slice (units of r0)
+uniform float uW0;         // observer offset along the 4th spatial axis
+uniform vec3  uRight;
+uniform vec3  uUp;
+uniform vec3  uFwd;
+uniform float uTanHalf;
+uniform float uD;          // spacetime dimension (4..7)
+uniform float uMode;       // 0 = quasi-spherical accretion flow, 1 = thin disk
+uniform float uSplit;      // 1 = D=4 on the left half, D on the right half
+uniform float uGrid;
+uniform float uTime;
+uniform float uExposure;
+uniform int   uIter;
+
+const float PI = 3.14159265359;
+
+float hash13(vec3 p3) {
+  p3 = fract(p3 * 0.1031);
+  p3 += dot(p3, p3.zyx + 31.32);
+  return fract((p3.x + p3.y) * p3.z);
+}
+vec3 hash33(vec3 p3) {
+  p3 = fract(p3 * vec3(0.1031, 0.1030, 0.0973));
+  p3 += dot(p3, p3.yxz + 33.33);
+  return fract((p3.xxy + p3.yxx) * p3.zyx);
+}
+float vnoise(vec3 x) {
+  vec3 i = floor(x);
+  vec3 f = fract(x);
+  f = f * f * (3.0 - 2.0 * f);
+  float a = mix(hash13(i), hash13(i + vec3(1.0, 0.0, 0.0)), f.x);
+  float b = mix(hash13(i + vec3(0.0, 1.0, 0.0)), hash13(i + vec3(1.0, 1.0, 0.0)), f.x);
+  float c = mix(hash13(i + vec3(0.0, 0.0, 1.0)), hash13(i + vec3(1.0, 0.0, 1.0)), f.x);
+  float d = mix(hash13(i + vec3(0.0, 1.0, 1.0)), hash13(i + vec3(1.0, 1.0, 1.0)), f.x);
+  return mix(mix(a, b, f.y), mix(c, d, f.y), f.z);
+}
+float fbm3(vec3 p) {
+  float a = 0.5;
+  float s = 0.0;
+  for (int i = 0; i < 4; i++) {
+    s += a * vnoise(p);
+    p = p * 2.03 + vec3(1.7, 9.2, 3.1);
+    a *= 0.5;
+  }
+  return s;
+}
+
+// blackbody colour (Tanner Helland fit), temperature in Kelvin -> linear RGB hue
+vec3 blackbody(float Tk) {
+  float t = clamp(Tk, 1000.0, 40000.0) / 100.0;
+  float r = 1.0;
+  float g = 1.0;
+  float b = 1.0;
+  if (t > 66.0) {
+    r = clamp(1.2929 * pow(t - 60.0, -0.1332), 0.0, 1.0);
+    g = clamp(1.1299 * pow(t - 60.0, -0.0755), 0.0, 1.0);
+  } else {
+    g = clamp(0.3901 * log(t) - 0.6318, 0.0, 1.0);
+    if (t <= 19.0) { b = 0.0; } else { b = clamp(0.5432 * log(t - 10.0) - 1.1962, 0.0, 1.0); }
+  }
+  return pow(vec3(r, g, b), vec3(2.2));
+}
+
+vec3 starLayer(vec3 d, float scale, float density, float size, float seed) {
+  vec3 p = d * scale;
+  vec3 id = floor(p);
+  vec3 f = fract(p) - 0.5;
+  float h = hash13(id + seed);
+  if (h > density) return vec3(0.0);
+  float u1 = h / density;
+  float u2 = fract(u1 * 57.3);
+  vec3 off = (hash33(id + seed + 7.7) - 0.5) * 0.6;
+  float rad = size * (0.55 + 0.45 * u2);
+  float s = smoothstep(rad, 0.0, length(f - off));
+  s = s * s * (0.5 + 3.0 * u1 * u1);
+  vec3 tint = mix(vec3(1.0, 0.72, 0.52), vec3(0.62, 0.78, 1.0), fract(u1 * 13.1));
+  return tint * s;
+}
+
+// Distant background as seen along the escaped 4D direction V. It is projected
+// onto the 3D slice (V.xyz); rays that travelled through the bulk get a cool tint.
+vec3 sky(vec4 V) {
+  vec3 d = normalize(V.xyz + vec3(1e-5, 0.0, 0.0));
+  float n1 = fbm3(d * 1.6);
+  float n2 = fbm3(d * 3.4 + n1 * 2.0 + vec3(4.1, 7.7, 1.3));
+  float cloud = pow(smoothstep(0.32, 0.85, n2), 1.6);
+  vec3 nc = mix(vec3(0.05, 0.03, 0.14), vec3(0.45, 0.16, 0.38), smoothstep(0.3, 0.8, n1));
+  float bd = dot(d, normalize(vec3(0.3, 0.9, 0.35))) * 3.0;
+  vec3 col = nc * cloud * (0.15 + 1.2 * exp(-bd * bd)) * 0.8;
+  col += starLayer(d, 36.0, 0.07, 0.16, 0.0) * 1.6;
+  col += starLayer(d, 80.0, 0.10, 0.20, 11.0) * 1.1;
+  col += starLayer(d, 170.0, 0.14, 0.30, 23.0) * 0.8;
+  col *= mix(vec3(1.0), vec3(0.75, 0.85, 1.25), clamp(abs(V.w), 0.0, 1.0));
+  if (uGrid > 0.5) {
+    float lon = atan(d.z, d.x) / (PI / 6.0);
+    float lat = asin(clamp(d.y, -1.0, 1.0)) / (PI / 6.0);
+    float lineA = 1.0 - smoothstep(0.0, 0.04, abs(fract(lon + 0.5) - 0.5));
+    float lineB = 1.0 - smoothstep(0.0, 0.04, abs(fract(lat + 0.5) - 0.5));
+    col += vec3(0.20, 0.45, 0.90) * max(lineA, lineB) * 0.6;
+  }
+  return col;
+}
+
+vec3 aces(vec3 x) {
+  return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0);
+}
+
+void main() {
+  if (uSplit > 0.5 && abs(gl_FragCoord.x - 0.5 * uRes.x) < 1.0) {
+    outColor = vec4(vec3(0.35), 1.0);
+    return;
+  }
+
+  // ── viewport (single view, or two side-by-side views) ──────────────────
+  float D = uD;
+  vec2 vp = uRes;
+  vec2 origin = vec2(0.0);
+  if (uSplit > 0.5) {
+    vp = vec2(0.5 * uRes.x, uRes.y);
+    if (gl_FragCoord.x < vp.x) { D = 4.0; } else { origin.x = vp.x; }
+  }
+  vec2 ndc = ((gl_FragCoord.xy - origin) / vp) * 2.0 - 1.0;
+  float asp = vp.x / vp.y;
+  vec3 d3 = normalize(uFwd + uRight * (ndc.x * asp * uTanHalf) + uUp * (ndc.y * uTanHalf));
+
+  // ── metric constants (r0 = 1) ──────────────────────────────────────────
+  float k = D - 3.0;                              // exponent in f(r) = 1 - r^-k
+  float cc = 0.5 * (D - 1.0);                     // geodesic coefficient
+  float rph = pow(cc, 1.0 / k);                   // photon sphere radius
+  float rin = (D < 4.5) ? 3.0 : 1.5 * rph;        // disk inner edge (ISCO only exists for D = 4)
+  float rout = 8.0;
+
+  // ── observer: static, at 4D position (x,y,z,w0), looking inside the slice
+  vec4 P = vec4(uCam, uW0);
+  float R = length(P);
+  float fcam = 1.0 - pow(R, -k);
+  vec4 rh = P / R;
+  vec4 V = vec4(d3, 0.0);
+  // Local (orthonormal, static frame) angle -> coordinate angle:
+  // tan(psi) = sqrt(f) * tan(theta_coord)
+  float cr = dot(V, rh);
+  vec4 pp = V - cr * rh;
+  float sp = length(pp);
+  if (sp > 1e-5) {
+    vec2 q = normalize(vec2(cr * sqrt(fcam), sp));
+    V = q.x * rh + q.y * (pp / sp);
+  }
+
+  vec3 col = vec3(0.0);
+  float T = 1.0;
+  bool cap = false;
+  bool done = false;
+
+  for (int i = 0; i < uIter; i++) {
+    float r2 = dot(P, P);
+    float r = sqrt(r2);
+    if (r < 1.0) { cap = true; break; }                        // crossed the horizon
+    if (r > 60.0 && dot(P, V) > 0.0) { done = true; break; }   // escaped
+    if (T < 0.01) { done = true; break; }
+
+    float f = 1.0 - pow(r, -k);
+    float dt = 0.012 + 0.035 * r;
+    if (r < 16.0) dt = min(dt, 0.2);
+
+    if (uMode < 0.5) {
+      // ── quasi-spherical, optically thin accretion flow ──────────────────
+      // free-fall density n ~ r^-(D-1)/2, emissivity ~ n², virial temperature ~ r^-(D-3)
+      if (r < 14.0) {
+        float g = sqrt(f / fcam);                              // gravitational redshift (static emitters)
+        float j = 2.2 * pow(r, -(D - 1.0));
+        float clump = 0.55 + 0.9 * vnoise(P.xyz * 1.3 + vec3(P.w * 1.7, P.w * 0.9, uTime * 0.04));
+        vec3 c = blackbody(16000.0 * pow(1.5 / r, k) * g);
+        col += T * c * (j * clump * g * g * g * dt);
+      }
+    } else {
+      // ── thin disk in the x–z plane, thin in y AND w (a 2-surface in 4D space) ──
+      float rho = length(P.xz);
+      float hd = length(vec2(P.y, P.w));
+      float H = 0.045 * rho + 0.01;
+      if (rho < rout + 1.0) dt = min(dt, 0.03 + 0.45 * max(hd - 3.0 * H, 0.0));
+      if (rho > rin && rho < rout && hd < 4.0 * H) {
+        float dens = exp(-0.5 * hd * hd / (H * H)) * smoothstep(rin, rin + 0.4, rho) * (1.0 - smoothstep(rout - 2.5, rout, rho));
+        float ang = 0.5 * uTime;
+        vec2 xz = mat2(cos(ang), -sin(ang), sin(ang), cos(ang)) * P.xz;
+        float tur = 0.6 + 0.8 * vnoise(vec3(xz * 1.6, (P.y + P.w) * 4.0));
+        // circular geodesic speed in the local static frame: beta² = (D-3) / (2 (rho^(D-3) - 1))
+        float b2 = (D - 3.0) / (2.0 * max(pow(rho, k) - 1.0, 0.05));
+        float be = min(sqrt(b2), 0.9);
+        vec4 vhat = normalize(vec4(-P.z, 0.0, P.x, 0.0));
+        vec4 rr = P / r;
+        float vr = dot(V, rr);
+        vec4 nloc = normalize((vr / sqrt(max(f, 1e-3))) * rr + (V - vr * rr));   // local direction of the traced ray
+        float gam = 1.0 / sqrt(1.0 - be * be);
+        float dop = 1.0 / (gam * (1.0 - be * dot(-nloc, vhat)));     // Doppler (photon travels along -nloc)
+        float g = dop * sqrt(f / fcam);
+        float Tem = 9000.0 * pow(rin / rho, 0.75);
+        float j = 5.0 * dens * tur * pow(rin / rho, 1.5);
+        col += T * blackbody(Tem * g) * (j * g * g * g * dt);
+        T *= exp(-dens * tur * 3.0 * dt);
+      }
+    }
+
+    // ── null geodesic step (semi-implicit, unit-speed ray) ───────────────
+    float pv = dot(P, V);
+    float h2 = max(r2 - pv * pv, 0.0);
+    vec4 acc = -cc * h2 * P * pow(r, -(D + 1.0));
+    V = normalize(V + acc * dt);
+    P += V * dt;
+  }
+
+  if (!done && !cap && length(P) < 3.0) cap = true;     // still circling the photon sphere
+
+  vec3 c = col;
+  if (!cap) c += T * sky(V);
+  c *= uExposure;
+  c = aces(c);
+  c = pow(c, vec3(1.0 / 2.2));
+  c += (hash13(vec3(gl_FragCoord.xy, uTime)) - 0.5) / 255.0;
+  outColor = vec4(c, 1.0);
+}
+`;
+
+  /* ─────────────── compile (async when the driver allows it) ─────────────── */
+  const parallel = gl.getExtension('KHR_parallel_shader_compile');
+  function sh(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s; }
+  const vs = sh(gl.VERTEX_SHADER, VS);
+  const fs = sh(gl.FRAGMENT_SHADER, FS);
+  const prog = gl.createProgram();
+  gl.attachShader(prog, vs);
+  gl.attachShader(prog, fs);
+  gl.bindAttribLocation(prog, 0, 'aPos');
+  gl.linkProgram(prog);
+  const tCompile = performance.now();
+
+  function waitCompile() {
+    const ready = parallel ? gl.getProgramParameter(prog, parallel.COMPLETION_STATUS_KHR) : true;
+    if (!ready) {
+      $('loading').textContent = 'Shader derleniyor… ' + Math.round((performance.now() - tCompile) / 1000) + ' sn';
+      requestAnimationFrame(waitCompile);
+      return;
+    }
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+      fail('Shader derlenemedi.\n\n' + (gl.getShaderInfoLog(vs) || '') + '\n' + (gl.getShaderInfoLog(fs) || '') + '\n' + (gl.getProgramInfoLog(prog) || ''));
+      return;
+    }
+    start();
+  }
+
+  /* ─────────────────────────────── app ─────────────────────────────── */
+  function start() {
+    gl.useProgram(prog);
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+    const U = {};
+    ['uRes', 'uCam', 'uW0', 'uRight', 'uUp', 'uFwd', 'uTanHalf', 'uD', 'uMode', 'uSplit', 'uGrid', 'uTime', 'uExposure', 'uIter']
+      .forEach((n) => { U[n] = gl.getUniformLocation(prog, n); });
+
+    const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+    const FOV = 55;
+    const TAN = Math.tan(FOV * Math.PI / 360);
+
+    const st = { D: 5, mode: 0, split: false, grid: false, exposure: 1, w0: 0, auto: true, phase: 0, quality: 'auto', scale: 1, ceil: 1, steps: 220 };
+
+    /* resolution */
+    function autoScale(px) { return clamp(Math.sqrt(px / (innerWidth * innerHeight * Math.pow(Math.min(devicePixelRatio || 1, 2), 2))), 0.35, 1); }
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.max(2, Math.round(innerWidth * dpr * st.scale));
+      canvas.height = Math.max(2, Math.round(innerHeight * dpr * st.scale));
+      gl.viewport(0, 0, canvas.width, canvas.height);
+    }
+    function applyQuality(q) {
+      st.quality = q;
+      st.ceil = autoScale(3.5e6);
+      if (q === 'auto') { st.scale = Math.min(autoScale(1.4e6), st.ceil); st.steps = 220; }
+      else if (q === 'high') { st.scale = 1; st.steps = 260; }
+      else if (q === 'medium') { st.scale = 0.7; st.steps = 200; }
+      else { st.scale = 0.5; st.steps = 150; }
+      resize();
+    }
+    let rt = 0;
+    window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(resize, 120); });
+
+    /* camera (orbit) */
+    const R_MIN = 9, R_MAX = 40;
+    const DEF = { th: 0.6, ph: 1.32, r: 14 };
+    const cam = { th: DEF.th, ph: DEF.ph, r: DEF.r, tth: DEF.th, tph: DEF.ph, tr: DEF.r, last: -1e9 };
+    const ptrs = new Map();
+    let pinch = 0;
+    const pd = () => { const a = Array.from(ptrs.values()); return Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y); };
+    canvas.addEventListener('pointerdown', (e) => {
+      try { canvas.setPointerCapture(e.pointerId); } catch (x) { /* ignore */ }
+      ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); cam.last = performance.now();
+      if (ptrs.size === 2) pinch = pd();
+    });
+    canvas.addEventListener('pointermove', (e) => {
+      const p = ptrs.get(e.pointerId); if (!p) return;
+      const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY; cam.last = performance.now();
+      if (ptrs.size === 1) { cam.tth -= dx * 0.0055; cam.tph = clamp(cam.tph - dy * 0.0055, 0.08, Math.PI - 0.08); }
+      else if (ptrs.size === 2) { const d = pd(); if (pinch > 0 && d > 0) cam.tr = clamp(cam.tr * pinch / d, R_MIN, R_MAX); pinch = d; }
+    });
+    const endP = (e) => { ptrs.delete(e.pointerId); pinch = 0; cam.last = performance.now(); };
+    canvas.addEventListener('pointerup', endP);
+    canvas.addEventListener('pointercancel', endP);
+    canvas.addEventListener('wheel', (e) => { e.preventDefault(); cam.tr = clamp(cam.tr * Math.exp(e.deltaY * 0.0012), R_MIN, R_MAX); cam.last = performance.now(); }, { passive: false });
+    canvas.addEventListener('dblclick', () => { cam.tth = DEF.th; cam.tph = DEF.ph; cam.tr = DEF.r; });
+
+    /* UI */
+    const facts = $('facts');
+    function fmt(x) { return x.toFixed(3).replace('.', ','); }
+    function renderFacts() {
+      const D = st.D, p = physics(D);
+      facts.innerHTML =
+        '<li>Metrik: f(r) = 1 − (r₀/r)<sup>' + (D - 3) + '</sup></li>' +
+        '<li>Ufuk: <b>r = r₀</b> (kesitte küre)</li>' +
+        '<li>Foton küresi: <b>' + fmt(p.rph) + ' r₀</b></li>' +
+        '<li>Gölge yarıçapı b<sub>c</sub>: <b>' + fmt(p.bc) + ' r₀</b></li>' +
+        '<li>Kararlı dairesel yörünge: ' + (D === 4 ? '<b>var</b>, en içte 3 r₀' : '<b>yok</b>') + '</li>' +
+        '<li>Kütleçekimi düşüşü: ~ 1/r<sup>' + (D - 2) + '</sup></li>';
+      $('lblR').textContent = 'D = ' + D + ' (Tangherlini)';
+      document.querySelectorAll('.dbtn').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.d === D)));
+    }
+    function w0Note() {
+      const p = physics(st.D);
+      const R3 = cam.r, R4 = Math.hypot(R3, st.w0);
+      if (st.w0 >= p.bc) return 'Gölge yok: bu kesitteki hiçbir ışının çarpma parametresi ' + fmt(p.bc) + ' r₀\'dan küçük değil. Kara delik görünmez ama kütleçekimi hâlâ ışığı büker.';
+      const al = Math.asin(Math.min(1, p.bc * Math.sqrt(p.f(R4)) / R4));
+      const c = R4 * Math.cos(al) / R3;
+      if (c >= 1) return 'Gölge yok.';
+      return 'Gölgenin görünen yarıçapı yaklaşık ' + (Math.acos(c) * 180 / Math.PI).toFixed(1).replace('.', ',') + '°. w₀ arttıkça küçülür, w₀ ≈ ' + fmt(p.bc) + ' r₀\'da kaybolur.';
+    }
+    document.querySelectorAll('.dbtn').forEach((b) => b.addEventListener('click', () => { st.D = +b.dataset.d; renderFacts(); }));
+    $('chkSplit').addEventListener('change', (e) => { st.split = e.target.checked; $('lblL').style.display = $('lblR').style.display = st.split ? 'block' : 'none'; });
+    $('selMode').addEventListener('change', (e) => { st.mode = +e.target.value; });
+    $('chkGrid').addEventListener('change', (e) => { st.grid = e.target.checked; });
+    $('rngExp').addEventListener('input', (e) => { st.exposure = +e.target.value; });
+    $('selQ').addEventListener('change', (e) => applyQuality(e.target.value));
+    $('w0Slider').addEventListener('input', (e) => { st.w0 = +e.target.value; if (st.auto) { st.auto = false; $('chkAuto').checked = false; } });
+    $('chkAuto').addEventListener('change', (e) => {
+      st.auto = e.target.checked;
+      if (st.auto) st.phase = Math.acos(clamp(1 - 2 * st.w0 / 3, -1, 1));
+    });
+    $('lblL').style.left = '25%'; $('lblR').style.left = '75%';
+    $('lblL').style.transform = $('lblR').style.transform = 'translateX(-50%)';
+    renderFacts();
+
+    /* frame loop */
+    let time = 0, last = performance.now(), frames = 0, ema = 16.7, nAdapt = 0, lastChange = 0, lastDown = 0, hudT = 0, hudN = 0, noteT = 0;
+
+    function step(now) {
+      const dtms = Math.min(now - last, 100); last = now;
+      const dt = dtms / 1000; time += dt;
+
+      if (st.auto) {                                   // w0 sweeps 0 → 3 r0 → 0 (period 50 s)
+        st.phase += dt * 2 * Math.PI / 50;
+        st.w0 = 1.5 - 1.5 * Math.cos(st.phase);
+        $('w0Slider').value = st.w0.toFixed(4);
+      }
+      const idle = now - cam.last > 2500;
+      if (idle && ptrs.size === 0) {
+        cam.tth += dt * 0.05;
+        cam.tph += (1.25 + 0.25 * Math.sin(time * 0.1) - cam.tph) * (1 - Math.exp(-dt * 0.5));
+      }
+      const kk = 1 - Math.exp(-dt * 8);
+      cam.th += (cam.tth - cam.th) * kk; cam.ph += (cam.tph - cam.ph) * kk; cam.r += (cam.tr - cam.r) * kk;
+
+      const sp = Math.sin(cam.ph);
+      const px = cam.r * sp * Math.cos(cam.th), py = cam.r * Math.cos(cam.ph), pz = cam.r * sp * Math.sin(cam.th);
+      const fx = -px / cam.r, fy = -py / cam.r, fz = -pz / cam.r;                   // forward
+      let rx = fy * 0 - fz * 1, ry = fz * 0 - fx * 0, rz = fx * 1 - fy * 0;         // right = forward × worldUp(0,1,0)
+      const rl = Math.hypot(rx, ry, rz); rx /= rl; ry /= rl; rz /= rl;
+      const ux = ry * fz - rz * fy, uy = rz * fx - rx * fz, uz = rx * fy - ry * fx; // up = right × forward
+
+      gl.uniform2f(U.uRes, canvas.width, canvas.height);
+      gl.uniform3f(U.uCam, px, py, pz);
+      gl.uniform1f(U.uW0, st.w0);
+      gl.uniform3f(U.uRight, rx, ry, rz);
+      gl.uniform3f(U.uUp, ux, uy, uz);
+      gl.uniform3f(U.uFwd, fx, fy, fz);
+      gl.uniform1f(U.uTanHalf, TAN);
+      gl.uniform1f(U.uD, st.D);
+      gl.uniform1f(U.uMode, st.mode);
+      gl.uniform1f(U.uSplit, st.split ? 1 : 0);
+      gl.uniform1f(U.uGrid, st.grid ? 1 : 0);
+      gl.uniform1f(U.uTime, time);
+      gl.uniform1f(U.uExposure, st.exposure);
+      gl.uniform1i(U.uIter, st.steps);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+      if (++frames === 2) $('loading').classList.add('done');
+
+      noteT += dtms;
+      if (noteT > 150) { noteT = 0; $('w0Val').textContent = 'w₀ = ' + st.w0.toFixed(2).replace('.', ',') + ' r₀'; $('w0Note').textContent = w0Note(); }
+
+      ema = ema * 0.94 + dtms * 0.06;
+      if (st.quality === 'auto' && ++nAdapt >= 40 && now - lastChange > 1200) {
+        nAdapt = 0;
+        let ns = st.scale;
+        if (ema > 22) { ns = Math.max(0.35, st.scale * 0.9); lastDown = now; }
+        else if (ema < 17.8 && now - lastDown > 7000) ns = Math.min(st.ceil, st.scale * 1.05);
+        st.steps = ns < 0.5 ? 170 : 220;
+        if (Math.abs(ns - st.scale) > 0.02) { st.scale = ns; lastChange = now; resize(); }
+      }
+      hudT += dtms; hudN++;
+      if (hudT >= 500) { $('hud').textContent = Math.round(hudN * 1000 / hudT) + ' fps, çözünürlük %' + Math.round(st.scale * 100); hudT = 0; hudN = 0; }
+    }
+    function frame(now) { requestAnimationFrame(frame); try { step(now); } catch (e) { fail((e && e.stack) || e); } }
+
+    applyQuality('auto');
+    requestAnimationFrame(frame);
+  }
+
+  waitCompile();
+})();
+</script>
+</body>
+</html>
